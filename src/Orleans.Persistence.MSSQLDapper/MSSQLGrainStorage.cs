@@ -80,12 +80,13 @@ namespace Orleans.Persistence.MSSQLDapper
             try
             {
                 using var c = new SqlConnection(this.options.ConnectionString);
-                var parameters = new DynamicParameters();
-                parameters.Add("grainId", grainId, DbType.AnsiString, size: grainId.Length);
-                parameters.Add("grainStateVersion", grainStateVersion, DbType.Int32);
                 storageVersion = await c.QuerySingleOrDefaultAsync<int?>(
                     "ClearStorageKey",
-                    parameters,
+                    param: new
+                    {
+                        grainId = new DbString { Value = grainId, IsAnsi = true, Length = 85 },
+                        grainStateVersion,
+                    },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -116,11 +117,12 @@ namespace Orleans.Persistence.MSSQLDapper
             try
             {
                 using var c = new SqlConnection(this.options.ConnectionString);
-                var parameters = new DynamicParameters();
-                parameters.Add("grainId", grainId, DbType.AnsiString, size: grainId.Length);
                 var persistedGrainState = await c.QuerySingleOrDefaultAsync<PersistedGrainState>(
                     "ReadFromStorageKey",
-                    parameters,
+                    param: new
+                    {
+                        grainId = new DbString { Value = grainId, IsAnsi = true, Length = 85 }
+                    },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
 
                 object state;
@@ -163,13 +165,14 @@ namespace Orleans.Persistence.MSSQLDapper
             try
             {
                 using var c = new SqlConnection(this.options.ConnectionString);
-                var parameters = new DynamicParameters();
-                parameters.Add("grainId", grainId, DbType.AnsiString, size: grainId.Length);
-                parameters.Add("grainStateVersion", grainStateVersion, DbType.Int32);
-                parameters.Add("payloadBinary", payloadBinary, DbType.Binary, size: payloadBinary.Length);
                 storageVersion = await c.QuerySingleOrDefaultAsync<int?>(
                     "WriteToStorageKey",
-                    parameters,
+                    param: new
+                    {
+                        grainId = new DbString { Value = grainId, IsAnsi = true, Length = 85 },
+                        grainStateVersion,
+                        payloadBinary,
+                    },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
             }
             catch (Exception ex)
