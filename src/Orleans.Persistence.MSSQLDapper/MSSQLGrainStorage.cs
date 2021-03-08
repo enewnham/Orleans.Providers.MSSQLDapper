@@ -109,7 +109,6 @@ namespace Orleans.Persistence.MSSQLDapper
         public async Task ReadStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
         {
             var grainId = grainReference.ToKeyString();
-            var grainStateVersion = ToGrainStateVersion(grainState);
             if (logger.IsEnabled(LogLevel.Trace))
             {
                 logger.Trace(ErrorCode.StorageProviderBase, $"Reading grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
@@ -123,7 +122,6 @@ namespace Orleans.Persistence.MSSQLDapper
                     param: new
                     {
                         grainId,
-                        grainStateVersion
                     },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
 
@@ -140,7 +138,7 @@ namespace Orleans.Persistence.MSSQLDapper
 
                 grainState.State = state;
                 grainState.ETag = persistedGrainState?.Version?.ToString();
-                // grainState.RecordExists = false;
+                // grainState.RecordExists = true;
                 if (logger.IsEnabled(LogLevel.Trace))
                 {
                     logger.Trace(ErrorCode.StorageProviderBase, $"Read grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
@@ -187,7 +185,7 @@ namespace Orleans.Persistence.MSSQLDapper
                 throw inconsistentStateException;
 
             grainState.ETag = storageVersion?.ToString();
-            // grainState.RecordExists = false;
+            // grainState.RecordExists = true;
             if (logger.IsEnabled(LogLevel.Trace))
             {
                 logger.Trace(ErrorCode.StorageProviderBase, $"Wrote grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
