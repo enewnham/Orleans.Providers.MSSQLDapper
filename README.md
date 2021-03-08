@@ -16,9 +16,9 @@ Press any key to continue ...
 
 > dotnet run -c Release -f net5.0 -- GrainStorage.MSSQLDapper
 Running grain storage benchmark against MSSQL + Dapper
-Performed 393911 persist (read & write) operations with 0 failures in 30760ms.
-Average time in ms per call was 7.519319598843245, with longest call taking 2307.6125ms.
-Total time waiting for the persistent store was 2961942.7024999415ms.
-Elapsed milliseconds: 30825
+Performed 488772 persist (read & write) operations with 0 failures in 30024ms.
+Average time in ms per call was 5.908809110382738, with longest call taking 446.4293ms.
+Total time waiting for the persistent store was 2888060.4464999917ms.
+Elapsed milliseconds: 30112
 Press any key to continue ...
 ```
