@@ -8,10 +8,10 @@ I ran the benchmarks by using the official Orleans repository's benchmark tool. 
 ```
 > dotnet run -c Release -f net5.0 -- GrainStorage.AdoNet
 Running grain storage benchmark against AdoNet
-Performed 233073 persist (read & write) operations with 0 failures in 33318ms.
-Average time in ms per call was 13.944696902686891, with longest call taking 7818.9575ms.
-Total time waiting for the persistent store was 3250132.341199942ms.
-Elapsed milliseconds: 33348
+Performed 266125 persist (read & write) operations with 0 failures in 30420ms.
+Average time in ms per call was 11.193829923532308, with longest call taking 7219.5881ms.
+Total time waiting for the persistent store was 2978957.9884000355ms.
+Elapsed milliseconds: 30453
 Press any key to continue ...
 
 > dotnet run -c Release -f net5.0 -- GrainStorage.MSSQLDapper
