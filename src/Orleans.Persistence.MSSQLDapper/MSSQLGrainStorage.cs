@@ -80,13 +80,12 @@ namespace Orleans.Persistence.MSSQLDapper
             try
             {
                 using var c = new SqlConnection(this.options.ConnectionString);
+                var parameters = new DynamicParameters();
+                parameters.Add("grainId", grainId, DbType.AnsiString, size: grainId.Length);
+                parameters.Add("grainStateVersion", grainStateVersion, DbType.Int32);
                 storageVersion = await c.QuerySingleOrDefaultAsync<int?>(
                     "ClearStorageKey",
-                    param: new
-                    {
-                        grainId,
-                        grainStateVersion
-                    },
+                    parameters,
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -117,16 +116,15 @@ namespace Orleans.Persistence.MSSQLDapper
             try
             {
                 using var c = new SqlConnection(this.options.ConnectionString);
+                var parameters = new DynamicParameters();
+                parameters.Add("grainId", grainId, DbType.AnsiString, size: grainId.Length);
                 var persistedGrainState = await c.QuerySingleOrDefaultAsync<PersistedGrainState>(
                     "ReadFromStorageKey",
-                    param: new
-                    {
-                        grainId,
-                    },
+                    parameters,
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
 
                 object state;
-                if (persistedGrainState == null)
+                if (persistedGrainState == null || persistedGrainState.PayloadBinary == null)
                 {
                     logger.Info(ErrorCode.StorageProviderBase, $"Null grain state read (default will be instantiated): name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
                     state = Activator.CreateInstance(grainState.Type);
@@ -165,14 +163,13 @@ namespace Orleans.Persistence.MSSQLDapper
             try
             {
                 using var c = new SqlConnection(this.options.ConnectionString);
+                var parameters = new DynamicParameters();
+                parameters.Add("grainId", grainId, DbType.AnsiString, size: grainId.Length);
+                parameters.Add("grainStateVersion", grainStateVersion, DbType.Int32);
+                parameters.Add("payloadBinary", payloadBinary, DbType.Binary, size: payloadBinary.Length);
                 storageVersion = await c.QuerySingleOrDefaultAsync<int?>(
                     "WriteToStorageKey",
-                    param: new
-                    {
-                        grainId,
-                        grainStateVersion,
-                        payloadBinary
-                    },
+                    parameters,
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
             }
             catch (Exception ex)
