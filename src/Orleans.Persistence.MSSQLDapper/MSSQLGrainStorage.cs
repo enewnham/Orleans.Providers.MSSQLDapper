@@ -84,7 +84,7 @@ namespace Orleans.Persistence.MSSQLDapper
                     "ClearStorageKey",
                     param: new
                     {
-                        grainId = new DbString { Value = grainId, IsAnsi = true, Length = 85 },
+                        grainId = GrainId(grainId),
                         grainStateVersion,
                     },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
@@ -121,7 +121,7 @@ namespace Orleans.Persistence.MSSQLDapper
                     "ReadFromStorageKey",
                     param: new
                     {
-                        grainId = new DbString { Value = grainId, IsAnsi = true, Length = 85 }
+                        grainId = GrainId(grainId),
                     },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
 
@@ -169,7 +169,7 @@ namespace Orleans.Persistence.MSSQLDapper
                     "WriteToStorageKey",
                     param: new
                     {
-                        grainId = new DbString { Value = grainId, IsAnsi = true, Length = 85 },
+                        grainId = GrainId(grainId),
                         grainStateVersion,
                         payloadBinary,
                     },
@@ -208,6 +208,8 @@ namespace Orleans.Persistence.MSSQLDapper
             }
 
         }
+
+        private DbString GrainId(string grainId) => new DbString { Value = grainId.Substring(15), IsAnsi = true, Length = 128 };
 
         private class PersistedGrainState
         {

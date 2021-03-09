@@ -22,7 +22,7 @@
 
 CREATE TABLE OrleansStorageOLTP
 (
-    GrainId VARCHAR( 85 ) NOT NULL,
+    GrainId VARCHAR( 128 ) NOT NULL,
 
     -- One is free to alter the size of these fields.
     PayloadBinary VARBINARY(MAX) NULL,
@@ -57,7 +57,7 @@ GO
 -- See further information at https://dotnet.github.io/orleans/Documentation/Core-Features/Grain-Persistence.html.
 CREATE PROCEDURE dbo.WriteToStorageKey
 (
-    @GrainId VARCHAR( 85 ) NOT NULL,
+    @GrainId VARCHAR( 128 ) NOT NULL,
     @GrainStateVersion INT NULL,
     @PayloadBinary VARBINARY(MAX) NULL
 )
@@ -106,7 +106,7 @@ GO
 
 CREATE PROCEDURE dbo.ClearStorageKey
 (
-    @GrainId VARCHAR( 85 ) NOT NULL,
+    @GrainId VARCHAR( 128 ) NOT NULL,
     @GrainStateVersion INT NOT NULL
 )
 WITH NATIVE_COMPILATION, SCHEMABINDING, EXECUTE AS OWNER  
@@ -124,7 +124,7 @@ GO
 
 CREATE PROCEDURE dbo.ReadFromStorageKey
 (
-    @GrainId VARCHAR( 85 ) NOT NULL
+    @GrainId VARCHAR( 128 ) NOT NULL
 )
 WITH NATIVE_COMPILATION, SCHEMABINDING, EXECUTE AS OWNER  
 AS BEGIN ATOMIC WITH (TRANSACTION ISOLATION LEVEL = SNAPSHOT, LANGUAGE = 'english')  
