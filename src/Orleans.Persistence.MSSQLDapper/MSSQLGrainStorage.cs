@@ -116,7 +116,7 @@ namespace Orleans.Persistence.MSSQLDapper
 
             try
             {
-                using var c = new SqlConnection(this.options.ConnectionString + this.options.UseReadOnlyIntent);
+                using var c = new SqlConnection(this.options.ConnectionString + this.options.ReadOnlyIntent);
                 var persistedGrainState = await c.QuerySingleOrDefaultAsync<PersistedGrainState>(
                     "ReadFromStorageKey",
                     param: new
