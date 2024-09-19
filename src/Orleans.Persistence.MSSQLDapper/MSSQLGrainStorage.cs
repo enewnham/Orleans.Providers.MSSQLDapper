@@ -22,13 +22,13 @@ namespace Orleans.Persistence.MSSQLDapper
         private readonly string name;
         private readonly ILogger<MSSQLGrainStorage> logger;
         private readonly MSSQLStorageOptions options;
-        private readonly IGrainStorageSerializer grainStorageSerializer;
+        private readonly OrleansGrainStorageSerializer grainStorageSerializer;
         private readonly IServiceProvider serviceProvider;
 
         public MSSQLGrainStorage(
             string name,
             MSSQLStorageOptions options,
-            IGrainStorageSerializer grainStorageSerializer,
+            OrleansGrainStorageSerializer grainStorageSerializer,
             IServiceProvider serviceProvider,
             ILogger<MSSQLGrainStorage> logger)
         {
