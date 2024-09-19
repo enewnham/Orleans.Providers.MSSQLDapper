@@ -1,6 +1,8 @@
 # Orleans.Providers.MSSQLDapper
 Optimized Orleans providers for Microsoft SQL Server for In-Memory OLTP and Natively Compiled Stored Procedures
 
+### 9-19-24 Updated to work with Orleans 8.2.0 and .NET 8
+
 ### Benchmarks
 
 I ran the benchmarks by using the official Orleans repository's benchmark tool. I had to hack it together because I don't have the bandwidth to write a proper one for this experiment

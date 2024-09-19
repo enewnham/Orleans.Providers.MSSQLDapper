@@ -1,13 +1,12 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Persistence.MSSQLDapper;
 using Orleans.Providers;
-using Orleans.Runtime;
+using Orleans.Runtime.Hosting;
 using Orleans.Storage;
 
 namespace Microsoft.Extensions.Hosting
@@ -20,7 +19,7 @@ namespace Microsoft.Extensions.Hosting
         /// <summary>
         /// Adds a MSSQLDapper grain storage provider as the default provider
         /// </summary>
-        public static ISiloHostBuilder AddMSSQLDapperGrainStorageAsDefault(this ISiloHostBuilder builder, Action<MSSQLStorageOptions> configureOptions)
+        public static IHostBuilder AddMSSQLDapperGrainStorageAsDefault(this IHostBuilder builder, Action<MSSQLStorageOptions> configureOptions)
         {
             return builder.AddMSSQLDapperGrainStorage(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME, configureOptions);
         }
@@ -28,7 +27,7 @@ namespace Microsoft.Extensions.Hosting
         /// <summary>
         /// Adds a MSSQLDapper grain storage provider.
         /// </summary>
-        public static ISiloHostBuilder AddMSSQLDapperGrainStorage(this ISiloHostBuilder builder, string name, Action<MSSQLStorageOptions> configureOptions)
+        public static IHostBuilder AddMSSQLDapperGrainStorage(this IHostBuilder builder, string name, Action<MSSQLStorageOptions> configureOptions)
         {
             return builder.ConfigureServices(services => services.AddMSSQLDapperGrainStorage(name, configureOptions));
         }
@@ -36,7 +35,7 @@ namespace Microsoft.Extensions.Hosting
         /// <summary>
         /// Adds a MSSQLDapper grain storage provider as the default provider
         /// </summary>
-        public static ISiloHostBuilder AddMSSQLDapperGrainStorageAsDefault(this ISiloHostBuilder builder, Action<OptionsBuilder<MSSQLStorageOptions>> configureOptions = null)
+        public static IHostBuilder AddMSSQLDapperGrainStorageAsDefault(this IHostBuilder builder, Action<OptionsBuilder<MSSQLStorageOptions>> configureOptions = null)
         {
             return builder.AddMSSQLDapperGrainStorage(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME, configureOptions);
         }
@@ -44,7 +43,7 @@ namespace Microsoft.Extensions.Hosting
         /// <summary>
         /// Adds a MSSQLDapper grain storage provider.
         /// </summary>
-        public static ISiloHostBuilder AddMSSQLDapperGrainStorage(this ISiloHostBuilder builder, string name, Action<OptionsBuilder<MSSQLStorageOptions>> configureOptions = null)
+        public static IHostBuilder AddMSSQLDapperGrainStorage(this IHostBuilder builder, string name, Action<OptionsBuilder<MSSQLStorageOptions>> configureOptions = null)
         {
             return builder.ConfigureServices(services => services.AddMSSQLDapperGrainStorage(name, configureOptions));
         }
@@ -112,11 +111,11 @@ namespace Microsoft.Extensions.Hosting
             Action<OptionsBuilder<MSSQLStorageOptions>> configureOptions = null)
         {
             configureOptions?.Invoke(services.AddOptions<MSSQLStorageOptions>(name));
-            // services.AddTransient<IConfigurationValidator>(sp => new MSSQLStorageOptionsValidator(sp.GetService<IOptionsMonitor<MSSQLStorageOptions>>().Get(name), name));
             services.ConfigureNamedOptionForLogging<MSSQLStorageOptions>(name);
-            services.TryAddSingleton(sp => sp.GetServiceByName<IGrainStorage>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME));
-            return services.AddSingletonNamedService(name, MSSQLStorageFactory.Create)
-                           .AddSingletonNamedService(name, (s, n) => (ILifecycleParticipant<ISiloLifecycle>)s.GetRequiredServiceByName<IGrainStorage>(n));
+            services.AddTransient<IPostConfigureOptions<MSSQLStorageOptions>, DefaultStorageProviderSerializerOptionsConfigurator<MSSQLStorageOptions>>();
+            services.AddTransient<IConfigurationValidator>(sp => new MSSQLDapperGrainStorageOptionsValidator(sp.GetRequiredService<IOptionsMonitor<MSSQLStorageOptions>>().Get(name), name));
+            services.AddGrainStorage(name, MSSQLStorageFactory.Create);
+            return services;
         }
     }
 }

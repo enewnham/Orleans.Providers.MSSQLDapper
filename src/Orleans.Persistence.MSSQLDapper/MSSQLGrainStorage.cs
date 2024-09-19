@@ -16,25 +16,26 @@ namespace Orleans.Persistence.MSSQLDapper
     /// <summary>
     /// MSSQL Dapper grain storage provider.
     /// </summary>
+    [DebuggerDisplay("Name = {Name}, ConnectionString = {Storage.ConnectionString}")]
     public class MSSQLGrainStorage : IGrainStorage, ILifecycleParticipant<ISiloLifecycle>
     {
         private readonly string name;
         private readonly ILogger<MSSQLGrainStorage> logger;
         private readonly MSSQLStorageOptions options;
-        private readonly SerializationManager serializationManager;
+        private readonly IGrainStorageSerializer grainStorageSerializer;
         private readonly IServiceProvider serviceProvider;
 
         public MSSQLGrainStorage(
             string name,
             MSSQLStorageOptions options,
-            SerializationManager serializationManager,
+            IGrainStorageSerializer grainStorageSerializer,
             IServiceProvider serviceProvider,
             ILogger<MSSQLGrainStorage> logger)
         {
             this.name = name;
             this.logger = logger;
             this.options = options;
-            this.serializationManager = serializationManager;
+            this.grainStorageSerializer = grainStorageSerializer;
             this.serviceProvider = serviceProvider;
         }
 
@@ -67,13 +68,12 @@ namespace Orleans.Persistence.MSSQLDapper
 
         public Task CloseAsync(CancellationToken ct) => Task.CompletedTask;
 
-        public async Task ClearStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
+        public async Task ClearStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
         {
-            var grainId = grainReference.ToKeyString();
             var grainStateVersion = ToGrainStateVersion(grainState);
             if (logger.IsEnabled(LogLevel.Trace))
             {
-                logger.Trace(ErrorCode.StorageProviderBase, $"Clearing grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
+                logger.LogTrace((int)ErrorCode.StorageProviderBase, $"Clearing grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag}");
             }
 
             int? storageVersion = null;
@@ -84,34 +84,33 @@ namespace Orleans.Persistence.MSSQLDapper
                     "ClearStorageKey",
                     param: new
                     {
-                        grainId = GrainId(grainId),
+                        grainId = GrainId(grainId.ToString()),
                         grainStateVersion,
                     },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                logger.Error(ErrorCode.StorageProvider_DeleteFailed, $"Error clearing grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag} Exception={ex.Message}", ex);
+                logger.LogError((int)ErrorCode.StorageProvider_DeleteFailed, $"Error clearing grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag} Exception={ex.Message}", ex);
                 throw;
             }
 
-            if (CheckVersionInconsistency("Clear", storageVersion, ToGrainStateVersion(grainState), grainType, grainId, out var inconsistentStateException))
+            if (CheckVersionInconsistency("Clear", storageVersion, ToGrainStateVersion(grainState), stateName, grainId.ToString(), out var inconsistentStateException))
                 throw inconsistentStateException;
 
             grainState.ETag = storageVersion?.ToString();
             // grainState.RecordExists = false;
             if (logger.IsEnabled(LogLevel.Trace))
             {
-                logger.Trace(ErrorCode.StorageProviderBase, $"Cleared grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
+                logger.LogTrace((int)ErrorCode.StorageProviderBase, $"Cleared grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag}");
             }
         }
 
-        public async Task ReadStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
+        public async Task ReadStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
         {
-            var grainId = grainReference.ToKeyString();
             if (logger.IsEnabled(LogLevel.Trace))
             {
-                logger.Trace(ErrorCode.StorageProviderBase, $"Reading grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
+                logger.LogTrace((int)ErrorCode.StorageProviderBase, $"Cleared grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag}");
             }
 
             try
@@ -121,44 +120,44 @@ namespace Orleans.Persistence.MSSQLDapper
                     "ReadFromStorageKey",
                     param: new
                     {
-                        grainId = GrainId(grainId),
+                        grainId = GrainId(grainId.ToString()),
                     },
                     commandType: CommandType.StoredProcedure).ConfigureAwait(false);
 
-                object state;
+                T state;
                 if (persistedGrainState == null || persistedGrainState.PayloadBinary == null)
                 {
-                    logger.Info(ErrorCode.StorageProviderBase, $"Null grain state read (default will be instantiated): name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
-                    state = Activator.CreateInstance(grainState.Type);
+                    logger.LogInformation((int)ErrorCode.StorageProviderBase, $"Null grain state read (default will be instantiated): name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag}");
+                    state = Activator.CreateInstance<T>();
                 }
                 else
                 {
-                    state = this.serializationManager.DeserializeFromByteArray<object>(persistedGrainState.PayloadBinary);
+                    state = grainStorageSerializer.Deserialize<T>(persistedGrainState.PayloadBinary);
                 }
 
                 grainState.State = state;
                 grainState.ETag = persistedGrainState?.Version?.ToString();
+                grainState.RecordExists = state != null;
                 // grainState.RecordExists = true;
                 if (logger.IsEnabled(LogLevel.Trace))
                 {
-                    logger.Trace(ErrorCode.StorageProviderBase, $"Read grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
+                    logger.LogTrace((int)ErrorCode.StorageProviderBase, $"Read grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag}");
                 }
             }
             catch (Exception ex)
             {
-                logger.Error(ErrorCode.StorageProvider_DeleteFailed, $"Error reading grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag} Exception={ex.Message}", ex);
+                logger.LogError((int)ErrorCode.StorageProvider_DeleteFailed, $"Error reading grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag} Exception={ex.Message}", ex);
                 throw;
             }
         }
 
-        public async Task WriteStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
+        public async Task WriteStateAsync<T>(string stateName, GrainId grainId, IGrainState<T> grainState)
         {
-            var grainId = grainReference.ToKeyString();
             var grainStateVersion = ToGrainStateVersion(grainState);
-            var payloadBinary = this.serializationManager.SerializeToByteArray(grainState.State);
+            var payloadBinary = grainStorageSerializer.Serialize( grainState.State ).ToArray();
             if (logger.IsEnabled(LogLevel.Trace))
             {
-                logger.Trace(ErrorCode.StorageProviderBase, $"Writing grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
+                logger.LogTrace((int)ErrorCode.StorageProviderBase, $"Writing grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag}");
             }
 
             int? storageVersion = null;
@@ -169,7 +168,7 @@ namespace Orleans.Persistence.MSSQLDapper
                     "WriteToStorageKey",
                     param: new
                     {
-                        grainId = GrainId(grainId),
+                        grainId = GrainId(grainId.ToString()),
                         grainStateVersion,
                         payloadBinary,
                     },
@@ -177,22 +176,22 @@ namespace Orleans.Persistence.MSSQLDapper
             }
             catch (Exception ex)
             {
-                logger.Error(ErrorCode.StorageProvider_DeleteFailed, $"Error writing grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag} Exception={ex.Message}", ex);
+                logger.LogError((int)ErrorCode.StorageProvider_DeleteFailed, $"Error writing grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag} Exception={ex.Message}", ex);
                 throw;
             }
 
-            if (CheckVersionInconsistency("Write", storageVersion, ToGrainStateVersion(grainState), grainType, grainId, out var inconsistentStateException))
+            if (CheckVersionInconsistency("Write", storageVersion, ToGrainStateVersion(grainState), stateName, grainId.ToString(), out var inconsistentStateException))
                 throw inconsistentStateException;
 
             grainState.ETag = storageVersion?.ToString();
             // grainState.RecordExists = true;
             if (logger.IsEnabled(LogLevel.Trace))
             {
-                logger.Trace(ErrorCode.StorageProviderBase, $"Wrote grain state: name={this.name} grainType={grainType} grainId={grainId} ETag={grainState.ETag}");
+                logger.LogTrace((int)ErrorCode.StorageProviderBase, $"Wrote grain state: name={this.name} stateName={stateName} grainId={grainId} ETag={grainState.ETag}");
             }
         }
 
-        private int? ToGrainStateVersion(IGrainState grainState) => !string.IsNullOrWhiteSpace(grainState.ETag) ? int.Parse(grainState.ETag, CultureInfo.InvariantCulture) : default(int?);
+        private int? ToGrainStateVersion<T>(IGrainState<T> grainState) => !string.IsNullOrWhiteSpace(grainState.ETag) ? int.Parse(grainState.ETag, CultureInfo.InvariantCulture) : default(int?);
 
         private bool CheckVersionInconsistency(string operation, int? storageVersion, int? grainStateVersion, string grainType, string grainId, out InconsistentStateException exception)
         {
